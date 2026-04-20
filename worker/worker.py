@@ -2,6 +2,7 @@ import redis
 import time
 import os
 import logging
+from typing import Optional, Tuple
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -10,7 +11,7 @@ REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 
 try:
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=False)
+    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)  # type: ignore
     r.ping()
     logger.info(f"Connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
 except redis.ConnectionError as e:
@@ -32,10 +33,10 @@ def process_job(job_id):
 
 while True:
     try:
-        job = r.brpop("job", timeout=5)
-        if job:
+        job = r.brpop(["job"], timeout=5)
+        if job is not None:
             _, job_id = job
-            process_job(job_id.decode())
+            process_job(job_id)
     except Exception as e:
         logger.error(f"Error in main loop: {e}")
         time.sleep(1)

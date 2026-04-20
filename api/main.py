@@ -13,7 +13,7 @@ REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', None)
 try:
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=False)
+    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
     r.ping()
     logger.info(f"Connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
 except redis.ConnectionError as e:
@@ -52,8 +52,8 @@ def get_job(job_id: str):
         if not status:
             logger.warning(f"Job not found: {job_id}")
             raise HTTPException(status_code=404, detail="Job not found")
-        logger.info(f"Retrieved status for job {job_id}: {status.decode()}")
-        return {"job_id": job_id, "status": status.decode()}
+        logger.info(f"Retrieved status for job {job_id}: {status}")
+        return {"job_id": job_id, "status": status}
     except redis.RedisError as e:
         logger.error(f"Redis error while retrieving job {job_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve job")
