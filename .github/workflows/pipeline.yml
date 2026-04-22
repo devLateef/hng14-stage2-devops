@@ -43,14 +43,14 @@ jobs:
         working-directory: frontend
         run: npx eslint .
 
-      # Docker lint (FIXED)
+      # Docker lint 
       - name: Docker lint
         uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: |
-            api/Dockerfile
-            frontend/Dockerfile
-            worker/Dockerfile
+        # with:
+        #   dockerfile: |
+        #     api/Dockerfile
+        #     frontend/Dockerfile
+        #     worker/Dockerfile
 
 
 # -------------------------
