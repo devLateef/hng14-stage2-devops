@@ -1,15 +1,15 @@
-version: '3.9'
+version: "3.9"
 
 services:
+
   redis:
     image: redis:7-alpine
-    container_name: redis
-    ports: []
+    command: ["redis-server", "--appendonly", "yes"]
     networks:
       - app-network
-    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -19,105 +19,72 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
 
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: api
+    build: ./api
     ports:
-      - "${API_PORT:-8000}:8000"
-    networks:
-      - app-network
+      - "8000:8000"
     environment:
       - REDIS_HOST=redis
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    networks:
+      - app-network
     depends_on:
       redis:
         condition: service_healthy
+    restart: unless-stopped
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
-      interval: 30s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 20s
       timeout: 10s
-      retries: 3
-      start_period: 5s
+      retries: 5
+      start_period: 10s
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: frontend
+    build: ./frontend
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "3000:3000"
+    environment:
+      - API_URL=http://api:8000
     networks:
       - app-network
-    environment:
-      - API_URL=http://api:8000 #What was here initially: API_URL=${API_URL:-http://api:8000}
-      - NODE_ENV=${ENVIRONMENT:-production}
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
-      interval: 30s
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || curl -f http://localhost:3000/index.html"]
+      interval: 20s
       timeout: 10s
-      retries: 3
-      start_period: 5s
+      retries: 5
+      start_period: 10s
 
   worker:
-    build:
-      context: ./worker
-      dockerfile: Dockerfile
-    container_name: worker
-    networks:
-      - app-network
+    build: ./worker
     environment:
       - REDIS_HOST=redis
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    networks:
+      - app-network
     depends_on:
       redis:
         condition: service_healthy
+    restart: unless-stopped
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-    healthcheck:
-      test: ["CMD", "python", "-c", "import redis; redis.Redis(host='redis', port=6379, decode_responses=True).ping()"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
 
 networks:
   app-network:
@@ -125,4 +92,3 @@ networks:
 
 volumes:
   redis_data:
-    driver: local
