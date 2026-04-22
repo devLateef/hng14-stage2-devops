@@ -69,7 +69,7 @@ services:
     networks:
       - app-network
     environment:
-      - API_URL=${API_URL:-http://api:8000}
+      - API_URL=http://api:8000 #What was here initially: API_URL=${API_URL:-http://api:8000}
       - NODE_ENV=${ENVIRONMENT:-production}
     depends_on:
       api:
