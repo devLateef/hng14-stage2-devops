@@ -270,10 +270,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure registry credentials
+        if: env.REGISTRY_PASSWORD != ''
+        env:
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
         run: |
-          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login \
-            ${{ secrets.REGISTRY_URL }} \
-            -u ${{ secrets.REGISTRY_USERNAME }} \
+          echo "$REGISTRY_PASSWORD" | docker login \
+            "$REGISTRY_URL" \
+            -u "$REGISTRY_USERNAME" \
             --password-stdin
 
       - name: Rolling deployment
