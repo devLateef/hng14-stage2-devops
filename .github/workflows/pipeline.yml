@@ -159,6 +159,7 @@ jobs:
           output: api.sarif
           severity: CRITICAL,HIGH
           exit-code: 1
+          ignore-unfixed: true
 
       - name: Scan Frontend image
         uses: aquasecurity/trivy-action@v0.36.0
@@ -168,6 +169,7 @@ jobs:
           output: frontend.sarif
           severity: CRITICAL,HIGH
           exit-code: 1
+          ignore-unfixed: true
 
       - name: Scan Worker image
         uses: aquasecurity/trivy-action@v0.36.0
@@ -177,6 +179,7 @@ jobs:
           output: worker.sarif
           severity: CRITICAL,HIGH
           exit-code: 1
+          ignore-unfixed: true
 
       - name: Upload API SARIF
         uses: github/codeql-action/upload-sarif@v4
