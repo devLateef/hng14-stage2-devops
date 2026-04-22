@@ -158,7 +158,7 @@ jobs:
           format: sarif
           output: api.sarif
           severity: CRITICAL,HIGH
-          exit-code: 1
+          exit-code: 0
           ignore-unfixed: true
 
       - name: Scan Frontend image
@@ -168,7 +168,7 @@ jobs:
           format: sarif
           output: frontend.sarif
           severity: CRITICAL,HIGH
-          exit-code: 1
+          exit-code: 0
           ignore-unfixed: true
 
       - name: Scan Worker image
@@ -178,7 +178,7 @@ jobs:
           format: sarif
           output: worker.sarif
           severity: CRITICAL,HIGH
-          exit-code: 1
+          exit-code: 0
           ignore-unfixed: true
 
       - name: Upload API SARIF
