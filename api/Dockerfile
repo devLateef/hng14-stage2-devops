@@ -11,7 +11,7 @@ WORKDIR /app
 
 RUN useradd -m appuser
 
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --from=builder /usr/local /usr/local
 COPY . .
 
 ENV PATH=/home/appuser/.local/bin:$PATH
