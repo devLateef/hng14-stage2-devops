@@ -12,12 +12,11 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl and shadow package for user/group management
+RUN apk add --no-cache curl shadow
 
 # Create non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
+RUN useradd -m -u 1000 appuser
 
 # Copy node modules from builder
 COPY --from=builder /build/node_modules ./node_modules
