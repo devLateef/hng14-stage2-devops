@@ -5,11 +5,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 
-FROM python:3.10-slim
+FROM python:3.10-slim AS runtime
 
 WORKDIR /app
 
-RUN useradd -m appuser
+RUN useradd -m -u 1001 appuser
 
 COPY --from=builder /usr/local /usr/local
 COPY . .

@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Python lint
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -29,7 +29,6 @@ jobs:
       - name: Python Lint
         run: flake8 api worker
 
-      # JS lint
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -43,7 +42,6 @@ jobs:
         working-directory: frontend
         run: npx eslint .
 
-      # Docker lint
       - name: Hadolint API Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
@@ -69,7 +67,8 @@ jobs:
     needs: lint
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -84,9 +83,9 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: api
-        run: pytest --cov=. --cov-report=xml
+        run: pytest tests/ --cov=. --cov-report=xml
 
-      - name: Upload coverage
+      - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -104,48 +103,80 @@ jobs:
       security-events: write
       contents: read
 
-    steps:
-      - uses: actions/checkout@v4
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
 
-      # Build images locally (NO registry)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
       - name: Build API image
-        run: docker build -t api:${{ github.sha }} ./api
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          push: true
+          tags: |
+            localhost:5000/api:${{ github.sha }}
+            localhost:5000/api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
 
       - name: Build Frontend image
-        run: docker build -t frontend:${{ github.sha }} ./frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            localhost:5000/frontend:${{ github.sha }}
+            localhost:5000/frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
 
       - name: Build Worker image
-        run: docker build -t worker:${{ github.sha }} ./worker
+        uses: docker/build-push-action@v5
+        with:
+          context: ./worker
+          push: true
+          tags: |
+            localhost:5000/worker:${{ github.sha }}
+            localhost:5000/worker:latest
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,scope=worker,mode=max
 
-      # Security scan (LOCAL IMAGES ONLY)
-      # exit-code: 0 so pipeline continues even if vulnerabilities are found.
-      # Results are uploaded to GitHub Security tab for review.
-      - name: Scan API
+      - name: Scan API image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: api:${{ github.sha }}
+          image-ref: localhost:5000/api:${{ github.sha }}
           format: sarif
           output: api.sarif
           severity: CRITICAL,HIGH
-          exit-code: 0
+          exit-code: 1
 
-      - name: Scan Frontend
+      - name: Scan Frontend image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: frontend:${{ github.sha }}
+          image-ref: localhost:5000/frontend:${{ github.sha }}
           format: sarif
           output: frontend.sarif
           severity: CRITICAL,HIGH
-          exit-code: 0
+          exit-code: 1
 
-      - name: Scan Worker
+      - name: Scan Worker image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: worker:${{ github.sha }}
+          image-ref: localhost:5000/worker:${{ github.sha }}
           format: sarif
           output: worker.sarif
           severity: CRITICAL,HIGH
-          exit-code: 0
+          exit-code: 1
 
       - name: Upload API SARIF
         uses: github/codeql-action/upload-sarif@v4
@@ -178,7 +209,8 @@ jobs:
     needs: build_and_scan
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -193,6 +225,11 @@ jobs:
             sleep 2
           done
           exit 1
+
+      - name: Run integration tests
+        run: |
+          chmod +x tests/integration.sh
+          TIMEOUT=60 API_URL=http://localhost:8000 bash tests/integration.sh
 
       - name: Submit job
         run: |
@@ -226,7 +263,15 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure registry credentials
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login \
+            ${{ secrets.REGISTRY_URL }} \
+            -u ${{ secrets.REGISTRY_USERNAME }} \
+            --password-stdin
 
       - name: Rolling deployment
         run: |

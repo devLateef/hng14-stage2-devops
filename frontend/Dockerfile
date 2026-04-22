@@ -5,11 +5,11 @@ COPY package*.json ./
 RUN npm install
 
 
-FROM node:18-alpine
+FROM node:18-alpine AS runtime
 
 WORKDIR /app
 
-RUN adduser -D appuser
+RUN adduser -D -u 1001 appuser
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .
