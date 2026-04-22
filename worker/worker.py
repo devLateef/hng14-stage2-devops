@@ -2,7 +2,7 @@ import redis
 import time
 import os
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def process_job(job_id):
 
 while True:
     try:
-        job = r.brpop(["job"], timeout=5)
+        job: Optional[Tuple[str, str]] = cast(Optional[Tuple[str, str]], r.brpop(["job"], timeout=5))
         if job is not None:
             _, job_id = job
             process_job(job_id)
