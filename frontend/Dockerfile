@@ -17,9 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser
-
 # Copy node modules from builder
 COPY --from=builder /build/node_modules ./node_modules
 
@@ -27,9 +24,9 @@ COPY --from=builder /build/node_modules ./node_modules
 COPY app.js .
 COPY views/ ./views/
 
-# Change ownership and switch to non-root user
-RUN chown -R appuser:appuser /app
-USER appuser
+# Use existing node user (instead of creating one)
+RUN chown -R node:node /app
+USER node
 
 # Expose port
 EXPOSE 3000
