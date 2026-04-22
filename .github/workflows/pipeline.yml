@@ -5,9 +5,9 @@ on:
     branches: [main, dev]
   pull_request:
 
-# -------------------------
+# =========================
 # LINT STAGE
-# -------------------------
+# =========================
 jobs:
   lint:
     name: Lint Code
@@ -16,7 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Python lint
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -28,7 +27,6 @@ jobs:
       - name: Python Lint
         run: flake8 api worker
 
-      # JS lint
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -42,7 +40,6 @@ jobs:
         working-directory: frontend
         run: npx eslint .
 
-      # Docker lint
       - name: Hadolint API
         uses: hadolint/hadolint-action@v3.1.0
         with:
@@ -59,9 +56,9 @@ jobs:
           dockerfile: ./worker/Dockerfile
 
 
-# -------------------------
+# =========================
 # TEST STAGE
-# -------------------------
+# =========================
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -92,9 +89,9 @@ jobs:
           path: api/coverage.xml
 
 
-# -------------------------
+# =========================
 # BUILD STAGE
-# -------------------------
+# =========================
   build:
     name: Build Images
     runs-on: ubuntu-latest
@@ -147,9 +144,9 @@ jobs:
           docker push $REGISTRY/worker:${{ github.sha }}
 
 
-# -------------------------
-# SECURITY SCAN
-# -------------------------
+# =========================
+# SECURITY STAGE
+# =========================
   security:
     name: Trivy Scan
     runs-on: ubuntu-latest
@@ -157,6 +154,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Pull images from registry (FIX)
+        run: |
+          docker pull localhost:5000/api:${{ github.sha }}
+          docker pull localhost:5000/frontend:${{ github.sha }}
+          docker pull localhost:5000/worker:${{ github.sha }}
 
       - name: Scan API
         uses: aquasecurity/trivy-action@master
@@ -167,15 +170,33 @@ jobs:
           severity: CRITICAL
           exit-code: 1
 
+      - name: Scan Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: localhost:5000/frontend:${{ github.sha }}
+          format: sarif
+          output: frontend.sarif
+          severity: CRITICAL
+          exit-code: 1
+
+      - name: Scan Worker
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: localhost:5000/worker:${{ github.sha }}
+          format: sarif
+          output: worker.sarif
+          severity: CRITICAL
+          exit-code: 1
+
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: api.sarif
 
 
-# -------------------------
-# INTEGRATION TEST
-# -------------------------
+# =========================
+# INTEGRATION STAGE
+# =========================
   integration:
     name: Integration Test
     runs-on: ubuntu-latest
@@ -220,9 +241,9 @@ jobs:
         run: docker compose down
 
 
-# -------------------------
+# =========================
 # DEPLOY STAGE
-# -------------------------
+# =========================
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
