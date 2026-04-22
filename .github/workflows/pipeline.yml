@@ -176,7 +176,7 @@ jobs:
       - name: Check for CRITICAL vulnerabilities
         run: |
           if grep -q '"level": "CRITICAL"' trivy-results.sarif; then
-            echo "❌ CRITICAL vulnerabilities found!"
+            echo "CRITICAL vulnerabilities found!"
             exit 1
           else
             echo "✓ No CRITICAL vulnerabilities found"
@@ -255,12 +255,12 @@ jobs:
               echo "✓ Job completed successfully"
               exit 0
             elif [ "$STATUS" = "failed" ]; then
-              echo "❌ Job failed"
+              echo "Job failed"
               exit 1
             fi
             sleep 1
           done
-          echo "⚠️ Job did not complete within timeout (60s)"
+          echo "Job did not complete within timeout (60s)"
           exit 1
 
       - name: Check services health
@@ -319,7 +319,7 @@ jobs:
               ELAPSED=$((CURRENT_TIME - START_TIME))
               
               if [ $ELAPSED -gt $HEALTH_CHECK_TIMEOUT ]; then
-                echo "❌ Health check failed for $SERVICE"
+                echo "Health check failed for $SERVICE"
                 exit 1
               fi
               
