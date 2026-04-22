@@ -2,22 +2,18 @@ import redis
 import time
 import os
 import logging
-import signal
-import sys
+from typing import Optional, Tuple, cast
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# -------------------------
-# CONFIG
-# -------------------------
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
-# -------------------------
-# SAFE REDIS CONNECT
-# -------------------------
-def connect_redis():
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+
+
+def get_redis():
     retries = 5
     while retries > 0:
         try:
@@ -34,26 +30,13 @@ def connect_redis():
             logger.warning("Redis not ready, retrying...")
             time.sleep(2)
 
-    logger.error("Could not connect to Redis")
-    sys.exit(1)
+    raise Exception("Could not connect to Redis")
 
 
-r = connect_redis()
+r = get_redis()
 
-# -------------------------
-# GRACEFUL SHUTDOWN
-# -------------------------
-def shutdown(signum, frame):
-    logger.info("Shutting down worker...")
-    sys.exit(0)
 
-signal.signal(signal.SIGINT, shutdown)
-signal.signal(signal.SIGTERM, shutdown)
-
-# -------------------------
-# PROCESS JOB
-# -------------------------
-def process_job(job_id: str):
+def process_job(job_id):
     try:
         logger.info(f"Processing job {job_id}")
         time.sleep(2)
@@ -63,21 +46,30 @@ def process_job(job_id: str):
         logger.info(f"Job {job_id} completed")
 
     except Exception as e:
-        logger.error(f"Job failed {job_id}: {e}")
-        r.hset(f"job:{job_id}", "status", "failed")
+        logger.error(f"Error processing job {job_id}: {e}")
+
+        try:
+            r.hset(f"job:{job_id}", "status", "failed")
+        except Exception:
+            pass
 
 
-# -------------------------
-# MAIN LOOP
-# -------------------------
-while True:
-    try:
-        job = r.brpop("jobs", timeout=5)  # IMPORTANT FIX HERE
+def main():
+    while True:
+        try:
+            job: Optional[Tuple[str, str]] = cast(
+                Optional[Tuple[str, str]],
+                r.brpop(["jobs"], timeout=5)
+            )
 
-        if job:
-            _, job_id = job
-            process_job(job_id)
+            if job:
+                _, job_id = job
+                process_job(job_id)
 
-    except Exception as e:
-        logger.error(f"Worker loop error: {e}")
-        time.sleep(1)
+        except Exception as e:
+            logger.error(f"Worker loop error: {e}")
+            time.sleep(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,46 +1,32 @@
-import pytest
-import uuid
-from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
 import sys
 import os
+import uuid
+import pytest
+from unittest.mock import MagicMock
+from fastapi.testclient import TestClient
 
-# -------------------------
-# SAFE IMPORT PATH
-# -------------------------
+# Fix import path BEFORE importing app
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import main
-from main import app, is_valid_uuid
+from main import app, is_valid_uuid  # noqa: E402
 
 
-# -------------------------
-# CLIENT FIXTURE
-# -------------------------
 @pytest.fixture
 def client():
     return TestClient(app)
 
 
-# -------------------------
-# REDIS MOCK FIXTURE (CLEAN RESET SAFE)
-# -------------------------
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_redis():
     mock = MagicMock()
     mock.ping.return_value = True
 
-    main.r = mock  # patch redis instance
+    import main
+    main.r = mock
 
-    yield mock
-
-    # cleanup after each test
-    main.r = None
+    return mock
 
 
-# -------------------------
-# VALIDATION TESTS
-# -------------------------
 class TestValidation:
 
     def test_is_valid_uuid_with_valid_uuid(self):
@@ -54,9 +40,6 @@ class TestValidation:
         assert is_valid_uuid(None) is False
 
 
-# -------------------------
-# JOB CREATION
-# -------------------------
 class TestJobCreation:
 
     def test_create_job_success(self, client, mock_redis):
@@ -76,6 +59,7 @@ class TestJobCreation:
 
     def test_create_job_redis_error(self, client, mock_redis):
         import redis
+
         mock_redis.lpush.side_effect = redis.RedisError("fail")
 
         response = client.post("/jobs")
@@ -83,19 +67,18 @@ class TestJobCreation:
         assert response.status_code == 500
 
 
-# -------------------------
-# JOB RETRIEVAL
-# -------------------------
 class TestJobRetrieval:
 
     def test_get_job_success(self, client, mock_redis):
         job_id = str(uuid.uuid4())
+
         mock_redis.hget.return_value = "queued"
 
         response = client.get(f"/jobs/{job_id}")
 
         assert response.status_code == 200
         data = response.json()
+
         assert data["status"] == "queued"
 
     def test_get_job_invalid_uuid(self, client):
@@ -105,6 +88,7 @@ class TestJobRetrieval:
 
     def test_get_job_not_found(self, client, mock_redis):
         job_id = str(uuid.uuid4())
+
         mock_redis.hget.return_value = None
 
         response = client.get(f"/jobs/{job_id}")
