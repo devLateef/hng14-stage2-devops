@@ -8,12 +8,14 @@ RUN npm ci --only=production
 
 
 # Stage 2: Runtime
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
-# Install curl and shadow package for user/group management
-RUN apk add --no-cache curl shadow
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser
