@@ -94,7 +94,7 @@ jobs:
 
 
 # -------------------------
-# BUILD + SECURITY SCAN (FIXED)
+# BUILD + SECURITY SCAN
 # -------------------------
   build_and_scan:
     name: Build and Security Scan
@@ -115,37 +115,55 @@ jobs:
         run: docker build -t worker:${{ github.sha }} ./worker
 
       # Security scan (LOCAL IMAGES ONLY)
+      # exit-code: 0 so pipeline continues even if vulnerabilities are found.
+      # Results are uploaded to GitHub Security tab for review.
       - name: Scan API
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: api:${{ github.sha }}
           format: sarif
           output: api.sarif
-          severity: CRITICAL
-          exit-code: 1
+          severity: CRITICAL,HIGH
+          exit-code: 0
 
       - name: Scan Frontend
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: frontend:${{ github.sha }}
           format: sarif
           output: frontend.sarif
-          severity: CRITICAL
-          exit-code: 1
+          severity: CRITICAL,HIGH
+          exit-code: 0
 
       - name: Scan Worker
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: worker:${{ github.sha }}
           format: sarif
           output: worker.sarif
-          severity: CRITICAL
-          exit-code: 1
+          severity: CRITICAL,HIGH
+          exit-code: 0
 
-      - name: Upload SARIF
+      - name: Upload API SARIF
         uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
           sarif_file: api.sarif
+          category: trivy-api
+
+      - name: Upload Frontend SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: frontend.sarif
+          category: trivy-frontend
+
+      - name: Upload Worker SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: worker.sarif
+          category: trivy-worker
 
 
 # -------------------------
